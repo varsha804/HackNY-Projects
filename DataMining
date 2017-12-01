@@ -1,0 +1,86 @@
+import itertools, sys
+from itertools import combinations, product
+
+# For a given combo and a given sequence (s1, s2, ...), find
+# the minimum outlier window (returns number of outliers)
+def outlier(combo, seq):
+	left = list(range(0,len(seq)+1))
+	right = list(range(0+len(combo),len(seq)+1))
+	indices = list(itertools.product(left, right))
+	indices = [(i, j) for (i, j) in indices if j-i >=len(combo)]
+	min_out = sys.maxsize
+	changed = 0
+	if len(combo) == 1:
+		if combo[0] in seq:
+			return 0
+		else:
+			return -1
+	for pair in indices:
+		i, j, bad = pair[0], pair[1], 0
+		sublist = seq[i:j+1]
+		for val in combo:
+			if val not in sublist:
+				bad = 1
+			sublist = [x for x in sublist if x != val]
+		if not bad:
+			if len(sublist) < min_out:
+				min_out = len(sublist)
+				changed = 1
+	if not changed:
+		min_out = -1
+	return min_out
+
+# Get frequent tuples.
+def freq_tuples(seq, max_len, all_seq):
+	freq = []
+	for i in range(1, max_len+1):
+		tuple_i = set([c for c in combinations(seq, i)])
+		for combo in tuple_i:
+			occ = len([1 for j in all_seq if set(combo).issubset(j)])
+			if float(occ)/float(len(all_seq)) >= theta:
+				freq.append(combo)
+	return freq
+
+# get outlier-resilient patterns.
+def outlier_res(freq, all_seq):
+	resilient = []
+	for combo in freq:
+		windows = []
+		for seq in all_seq:
+			windows.append(outlier(combo, seq)/float(len(combo)))
+		count = len([1 for w in windows if w <= eps and w >= 0])
+		if count/float(len(all_seq)) >= theta:
+			resilient.append(combo)
+	return resilient
+
+def main():
+	# Get data from text file.
+	data = open('Data.txt')
+	global theta, eps
+	count, all_seq = 0, []
+	for line in data.readlines():
+		if count == 0:
+			l = line.split(", ")
+			theta, eps = float(l[0]), float(l[1])
+		else:
+			all_seq.append([int(c) for c in line.split(", ")])
+		count += 1
+
+	unique = set(x for l in all_seq for x in l)
+
+	# Get length of longest sequence. This is the length of the
+	# largest frequent pattern we will look for.
+	max_len = len(max(all_seq, key=len))
+
+	freq = freq_tuples(unique, max_len, all_seq)
+
+	resilient = outlier_res(freq, all_seq)
+
+	f = open('output.txt', 'w')
+	for combo in resilient:
+		pattern = ', '.join(map(str, sorted(list(combo)))) + '\n'
+		f.write(pattern)
+	f.close()
+	
+# run everything 		
+main()
